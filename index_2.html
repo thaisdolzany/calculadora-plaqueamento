@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculadora de plaqueamento celular</title>
+<style>
+  :root{
+    --slate50:#f8fafc; --slate100:#f1f5f9; --slate200:#e2e8f0; --slate300:#cbd5e1;
+    --slate400:#94a3b8; --slate500:#64748b; --slate600:#475569; --slate700:#334155;
+    --slate800:#1e293b; --slate900:#0f172a;
+    --teal50:#f0fdfa; --teal100:#ccfbf1; --teal200:#99f6e4; --teal500:#14b8a6;
+    --teal600:#0d9488; --teal700:#0f766e; --teal800:#115e59;
+    --amber100:#fef3c7; --amber800:#92400e;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--slate50); color:var(--slate900);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:24px 16px; line-height:1.4;
+  }
+  .wrap{max-width:640px; margin:0 auto;}
+  h1{font-size:24px; font-weight:600; letter-spacing:-.01em; margin:0;}
+  .sub{font-size:14px; color:var(--slate500); margin:4px 0 0;}
+  .card{background:#fff; border:1px solid var(--slate200); border-radius:16px; padding:20px; margin-top:16px;}
+  label,.lbl{display:block; font-size:14px; font-weight:500; color:var(--slate700); margin-bottom:6px;}
+  input,select{
+    width:100%; border:1px solid var(--slate300); border-radius:8px; background:#fff;
+    padding:9px 12px; font-size:16px; color:var(--slate900); font-variant-numeric:tabular-nums;
+  }
+  input:focus,select:focus{outline:none; border-color:var(--teal500); box-shadow:0 0 0 2px var(--teal200);}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .group{margin-top:16px;}
+  .group:first-child{margin-top:0;}
+  .hint{font-size:12px; color:var(--slate400); margin:4px 0 0;}
+  .toggle{display:inline-flex; border:1px solid var(--slate300); background:var(--slate100); border-radius:8px; padding:2px;}
+  .toggle button{
+    padding:6px 12px; font-size:14px; border:none; border-radius:6px; background:transparent;
+    color:var(--slate500); cursor:pointer; font-family:inherit;
+  }
+  .toggle button.active{background:#fff; color:var(--teal700); font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .result{border:2px solid var(--teal600); background:var(--teal50); border-radius:16px; padding:20px; margin-top:16px;}
+  .result h2{font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--teal800); margin:0;}
+  .bignums{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;}
+  .bigcard{background:#fff; border:1px solid var(--teal200); border-radius:12px; padding:12px;}
+  .bigcard .lab{font-size:12px; color:var(--slate500);}
+  .bigcard .val{font-size:24px; font-weight:600; font-variant-numeric:tabular-nums;}
+  .val.teal{color:var(--teal700);} .val.slate{color:var(--slate800);}
+  dl{margin:16px 0 0;}
+  .drow{display:flex; align-items:baseline; justify-content:space-between; gap:12px; border-bottom:1px solid var(--teal100); padding-bottom:6px; margin-bottom:6px;}
+  .drow dt{color:var(--slate600); font-size:14px;}
+  .drow dd{margin:0; font-weight:500; font-size:14px; color:var(--slate900); font-variant-numeric:tabular-nums; text-align:right;}
+  .note{font-size:12px; color:var(--slate500); margin:12px 0 0;}
+  .warn{background:var(--amber100); color:var(--amber800); border-radius:8px; padding:12px; font-size:14px; margin-top:12px;}
+  .empty{color:var(--slate500); margin:12px 0 0;}
+  .foot{text-align:center; font-size:12px; color:var(--slate400); margin:16px 0 4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Calculadora de plaqueamento celular</h1>
+    <p class="sub">A partir da suspensão já contada, calcula quanto de células e de meio misturar.</p>
+  </header>
+
+  <section class="card">
+    <div class="group">
+      <label for="vaso">Tipo de vaso</label>
+      <select id="vaso"></select>
+    </div>
+    <div class="group row">
+      <div>
+        <label for="area">Área (cm²)</label>
+        <input id="area" inputmode="decimal" value="0.32" />
+      </div>
+      <div>
+        <label for="wv">Volume por poço (mL)</label>
+        <input id="wv" inputmode="decimal" value="0.1" />
+      </div>
+    </div>
+    <p class="hint">Áreas e volumes variam por fabricante. Confira no catálogo e ajuste se precisar.</p>
+  </section>
+
+  <section class="card">
+    <div class="group row">
+      <div>
+        <label for="n">Quantos poços/garrafas</label>
+        <input id="n" inputmode="numeric" value="96" />
+      </div>
+      <div>
+        <label for="ov">Sobra de segurança (%)</label>
+        <input id="ov" inputmode="numeric" value="10" />
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="lbl">Definir o alvo por</span>
+      <div class="toggle">
+        <button type="button" id="btnPerV" class="active">Células por poço</button>
+        <button type="button" id="btnDens">Densidade (cells/cm²)</button>
+      </div>
+    </div>
+
+    <div class="group" id="grpPerV">
+      <label for="cpv">Células por poço/garrafa</label>
+      <input id="cpv" inputmode="decimal" value="5000" />
+      <p class="hint">Aceita notação científica, ex.: 5e3 = 5000.</p>
+    </div>
+
+    <div class="group" id="grpDens" style="display:none;">
+      <label for="dens">Densidade (células/cm²)</label>
+      <input id="dens" inputmode="decimal" value="15000" />
+      <p class="hint" id="densHint"></p>
+    </div>
+
+    <div class="group">
+      <label for="stock">Concentração da suspensão contada (células/mL)</label>
+      <input id="stock" inputmode="decimal" value="1e6" />
+      <p class="hint" id="stockHint"></p>
+    </div>
+  </section>
+
+  <section class="result">
+    <h2>Prepare a suspensão de plaqueamento</h2>
+    <div id="out"></div>
+  </section>
+
+  <p class="foot">Conferência rápida de bancada. Valide com seu protocolo e a contagem real.</p>
+</div>
+
+<script>
+"use strict";
+
+var PRESETS = [
+  { group:"Placas multipoços", items:[
+    { id:"p6",   label:"Placa 6 poços",   area:9.6,   vol:2,    wells:6 },
+    { id:"p12",  label:"Placa 12 poços",  area:3.8,   vol:1,    wells:12 },
+    { id:"p24",  label:"Placa 24 poços",  area:1.9,   vol:0.5,  wells:24 },
+    { id:"p48",  label:"Placa 48 poços",  area:1.1,   vol:0.3,  wells:48 },
+    { id:"p96",  label:"Placa 96 poços",  area:0.32,  vol:0.1,  wells:96 },
+    { id:"p384", label:"Placa 384 poços", area:0.056, vol:0.05, wells:384 }
+  ]},
+  { group:"Placas de Petri", items:[
+    { id:"d35",  label:"Petri 35 mm",  area:8,    vol:2,  wells:1 },
+    { id:"d60",  label:"Petri 60 mm",  area:21,   vol:3,  wells:1 },
+    { id:"d100", label:"Petri 100 mm", area:56.7, vol:10, wells:1 },
+    { id:"d150", label:"Petri 150 mm", area:152,  vol:20, wells:1 }
+  ]},
+  { group:"Garrafas (T-flask)", items:[
+    { id:"t25",  label:"T-25 (pequena)", area:25,  vol:5,  wells:1 },
+    { id:"t75",  label:"T-75",           area:75,  vol:15, wells:1 },
+    { id:"t150", label:"T-150",          area:150, vol:30, wells:1 },
+    { id:"t175", label:"T-175 (grande)", area:175, vol:35, wells:1 },
+    { id:"t225", label:"T-225",          area:225, vol:45, wells:1 }
+  ]},
+  { group:"Outro", items:[
+    { id:"custom", label:"Personalizado", area:10, vol:2, wells:1 }
+  ]}
+];
+
+var ALL = [];
+PRESETS.forEach(function(g){ g.items.forEach(function(p){ ALL.push(p); }); });
+function findPreset(id){ for(var i=0;i<ALL.length;i++){ if(ALL[i].id===id) return ALL[i]; } return null; }
+
+var SUP = {"-":"\u207B","0":"\u2070","1":"\u00B9","2":"\u00B2","3":"\u00B3","4":"\u2074","5":"\u2075","6":"\u2076","7":"\u2077","8":"\u2078","9":"\u2079"};
+function sup(n){ return String(n).split("").map(function(c){ return SUP[c]||c; }).join(""); }
+
+function sci(n){
+  if(!isFinite(n) || n===0) return "0";
+  var e = Math.floor(Math.log10(Math.abs(n)));
+  if(e>=-1 && e<=3) return Number(n.toFixed(e<0?1:0)).toLocaleString("pt-BR");
+  var m = n/Math.pow(10,e);
+  return m.toFixed(1).replace(".",",") + " \u00D7 10" + sup(e);
+}
+
+function vol(mL){
+  if(!isFinite(mL)) return "\u2014";
+  if(Math.abs(mL)<1) return (mL*1000).toFixed(mL*1000<10?1:0) + " \u00B5L";
+  return mL.toFixed(2).replace(".",",") + " mL";
+}
+
+function num(s){ var v = parseFloat(String(s).replace(",",".")); return isFinite(v) ? v : NaN; }
+
+var mode = "perVessel";
+
+var sel = document.getElementById("vaso");
+PRESETS.forEach(function(g){
+  var og = document.createElement("optgroup");
+  og.label = g.group;
+  g.items.forEach(function(p){
+    var o = document.createElement("option");
+    o.value = p.id; o.textContent = p.label;
+    og.appendChild(o);
+  });
+  sel.appendChild(og);
+});
+sel.value = "p96";
+
+function $(id){ return document.getElementById(id); }
+
+function drow(k,v){ return '<div class="drow"><dt>'+k+'</dt><dd>'+v+'</dd></div>'; }
+
+function recalc(){
+  var A = num($("area").value), W = num($("wv").value), N = num($("n").value),
+      ov = num($("ov").value), S = num($("stock").value);
+  var perV = (mode==="density") ? num($("dens").value)*A : num($("cpv").value);
+
+  $("stockHint").textContent = (isFinite(S)&&S>0) ? ("= " + sci(S) + " c\u00E9lulas/mL") : "Ex.: 1e6 = 1 milh\u00E3o/mL";
+  $("densHint").textContent = (mode==="density" && isFinite(perV)&&perV>0) ? ("Equivale a " + sci(perV) + " c\u00E9lulas por po\u00E7o.") : "";
+
+  var out = $("out");
+  var valid = [A,W,N,S,perV].every(function(x){ return isFinite(x)&&x>0; }) && isFinite(ov);
+  if(!valid){
+    out.innerHTML = '<p class="empty">Preencha os campos acima para ver a receita.</p>';
+    return;
+  }
+
+  var effN = N*(1+ov/100);
+  var totalWork = W*effN;
+  var totalCells = perV*effN;
+  var seedConc = perV/W;
+  var volStock = totalCells/S;
+  var volMedium = totalWork - volStock;
+  var dilution = S/seedConc;
+  var finalDensity = perV/A;
+
+  if(volStock > totalWork){
+    out.innerHTML = '<p class="warn">A suspens\u00E3o contada est\u00E1 dilu\u00EDda demais para esse alvo. '
+      + 'Centrifugue e ressuspenda num volume menor, ou reduza as c\u00E9lulas por po\u00E7o.</p>';
+    return;
+  }
+
+  var tiny = volStock < 0.005
+    ? '<p class="warn">O volume de suspens\u00E3o a pipetar \u00E9 muito pequeno. '
+      + 'Fa\u00E7a uma dilui\u00E7\u00E3o intermedi\u00E1ria para pipetar com precis\u00E3o.</p>'
+    : '';
+
+  out.innerHTML =
+    '<div class="bignums">'
+    + '<div class="bigcard"><div class="lab">Suspens\u00E3o de c\u00E9lulas</div><div class="val teal">'+vol(volStock)+'</div></div>'
+    + '<div class="bigcard"><div class="lab">Meio de cultura</div><div class="val slate">'+vol(volMedium)+'</div></div>'
+    + '</div>'
+    + tiny
+    + '<dl>'
+    + drow("Volume total da mistura", vol(totalWork))
+    + drow("Total de c\u00E9lulas necess\u00E1rias", sci(totalCells)+" c\u00E9lulas")
+    + drow("C\u00E9lulas por po\u00E7o (alvo)", sci(perV))
+    + drow("Densidade final", sci(finalDensity)+" c\u00E9lulas/cm\u00B2")
+    + drow("Fator de dilui\u00E7\u00E3o", dilution.toFixed(1).replace(".",",")+"\u00D7")
+    + '</dl>'
+    + '<p class="note">Inclui '+(num($("ov").value)||0)+'% de sobra. Misture bem antes de distribuir.</p>';
+}
+
+sel.addEventListener("change", function(){
+  var p = findPreset(sel.value);
+  if(p){ $("area").value = p.area; $("wv").value = p.vol; $("n").value = p.wells; }
+  recalc();
+});
+$("area").addEventListener("input", function(){ sel.value = "custom"; recalc(); });
+["wv","n","ov","cpv","dens","stock"].forEach(function(id){
+  $(id).addEventListener("input", recalc);
+});
+$("btnPerV").addEventListener("click", function(){
+  mode = "perVessel";
+  $("btnPerV").classList.add("active"); $("btnDens").classList.remove("active");
+  $("grpPerV").style.display = ""; $("grpDens").style.display = "none";
+  recalc();
+});
+$("btnDens").addEventListener("click", function(){
+  mode = "density";
+  $("btnDens").classList.add("active"); $("btnPerV").classList.remove("active");
+  $("grpDens").style.display = ""; $("grpPerV").style.display = "none";
+  recalc();
+});
+
+recalc();
+</script>
+</body>
+</html>
