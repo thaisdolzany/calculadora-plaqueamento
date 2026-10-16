@@ -1,89 +1,84 @@
-# calculadora-plaqueamento
-Calculadora de plaqueamento celular · Cell seeding calculator for plates and flasks.
-# Calculadora de Plaqueamento Celular · Cell Seeding Calculator
+# Cell seeding calculator · Calculadora de plaqueamento celular
 
-> 🇧🇷 Português · 🇬🇧 English below
+Single-page bench tool (HTML and plain JavaScript, no dependencies) that works out how
+much counted cell suspension and how much medium to mix to seed plates, dishes and flasks.
 
-Ferramenta de bancada em página única (HTML, sem dependências) que calcula o
-volume de suspensão de células e de meio de cultura necessário para semear
-placas e garrafas a partir de uma suspensão já contada.
+Open it at **https://thaisdolzany.github.io/calculadora-plaqueamento/**. It also works
+offline: download `index.html` and open it in a browser.
 
-**Acesse:** `https://thaisdolzany.github.io/calculadora-plaqueamento/`
+*Versão em português abaixo.*
 
-![Status](https://img.shields.io/badge/status-online-brightgreen)
-![Sem dependências](https://img.shields.io/badge/depend%C3%AAncias-nenhuma-blue)
+## What it does
 
----
+You choose the vessel (6- to 384-well plates, Petri dishes or T-flasks), the number of
+wells, a safety overage, the target (cells per well or cells/cm²) and the concentration of
+your counted suspension. The calculator returns a single master-mix recipe: the volume of
+suspension to pipette, the volume of medium to add, the total volume and number of cells,
+the final density and the dilution factor.
 
-## 🇧🇷 Português
+It warns when the suspension is too dilute to reach the target (instead of returning a
+negative medium volume) and when the volume to pipette is below 5 µL. Each invalid field
+gets its own message.
 
-### O que faz
+## How the numbers are calculated
 
-A partir da concentração da sua suspensão (células/mL), do vaso escolhido e do
-alvo de plaqueamento, a calculadora monta a receita de uma única suspensão de
-trabalho (*master mix*) e informa:
+With N wells, overage o (%), working volume W (mL) and area A (cm²) per well, target T
+cells per well (or density D cells/cm², so T = D × A) and stock concentration S (cells/mL):
 
-- volume de suspensão de células a pipetar;
-- volume de meio de cultura a adicionar;
-- volume total, total de células, densidade final e fator de diluição.
+| Quantity | Formula |
+|---|---|
+| Wells including overage | N' = N × (1 + o/100) |
+| Total volume of the mix | V = W × N' |
+| Cells needed | C = T × N' |
+| Suspension to pipette | C / S |
+| Medium to add | V − C / S |
+| Dilution factor | S / (T / W) |
+| Final density | T / A |
 
-### Como usar
+Numbers can be typed as `5000`, `0,32`, `0.1` or `1e6`. Inputs grouped by thousands, such
+as `100.000`, are rejected on purpose: in Portuguese they mean one hundred thousand, in
+English one hundred, and a wrong guess would change the seeding by a factor of 1,000.
 
-1. Escolha o tipo de vaso (placa de 6 a 384 poços, Petri ou garrafa T). A área
-   e o volume de trabalho típicos são preenchidos e podem ser ajustados.
-2. Informe quantos poços/garrafas vai semear e a sobra de segurança (%).
-3. Defina o alvo por células por poço **ou** por densidade (células/cm²).
-4. Informe a concentração da suspensão contada (aceita notação científica, ex.: `1e6`).
+Growth areas and working volumes vary by manufacturer. The presets are common values
+(Corning and Thermo catalogues) and are only a starting point: check your plate's datasheet
+and your own protocol.
 
-A calculadora avisa quando a suspensão está diluída demais para o alvo e quando
-o volume a pipetar é pequeno demais para precisão.
+## Tests
 
-### Observação importante
+```bash
+node --test
+```
 
-As áreas de crescimento e os volumes de trabalho variam entre fabricantes. Os
-valores pré-carregados são os mais comuns (Corning/Thermo) e servem como ponto
-de partida. **Confira sempre o catálogo da sua marca e o seu protocolo.** A
-ferramenta é uma conferência de bancada, não substitui validação experimental.
-
----
-
-## 🇬🇧 English
-
-### What it does
-
-From your counted cell suspension (cells/mL), the chosen vessel, and the seeding
-target, the calculator builds a single working suspension (master mix) and
-reports the volume of cell suspension and culture medium to combine, plus total
-volume, total cells, final density, and dilution factor.
-
-### How to use
-
-1. Pick the vessel (6 to 384-well plates, Petri dishes, or T-flasks). Typical
-   growth area and working volume are pre-filled and editable.
-2. Enter how many wells/flasks to seed and a safety overage (%).
-3. Set the target by cells per well **or** by density (cells/cm²).
-4. Enter the concentration of your counted suspension (scientific notation
-   accepted, e.g. `1e6`).
-
-The tool warns when the suspension is too dilute for the target and when the
-volume to pipette is too small for accuracy.
-
-### Important note
-
-Growth areas and working volumes vary by manufacturer. Pre-loaded values are
-common references (Corning/Thermo) and are a starting point only. **Always check
-your brand's catalogue and your own protocol.** This is a bench-side check, not
-a substitute for experimental validation.
+The tests load the calculation functions straight from `index.html` and check a 96-well
+example against a hand calculation, the density mode, the too-dilute warning, the number
+parser (decimal comma, scientific notation, rejected inputs) and the range checks for every
+field.
 
 ---
 
-## Tecnologia · Tech
+## Em português
 
-Página estática única (`index.html`), HTML + CSS + JavaScript puro, sem
-bibliotecas externas. Funciona offline e em qualquer hospedagem estática.
+Ferramenta de bancada em página única (HTML e JavaScript, sem dependências) que calcula
+quanto da suspensão de células já contada e quanto de meio misturar para semear placas,
+placas de Petri e garrafas.
 
-## Licença · License
+Acesse em **https://thaisdolzany.github.io/calculadora-plaqueamento/** ou baixe o
+`index.html` e abra no navegador, que funciona sem internet.
 
-MIT.
+Você escolhe o vaso, o número de poços, a sobra de segurança, o alvo (células por poço ou
+células/cm²) e a concentração da suspensão. A calculadora monta uma única suspensão de
+trabalho e informa o volume de suspensão a pipetar, o volume de meio, o volume total, o
+total de células, a densidade final e o fator de diluição. Ela avisa quando a suspensão
+está diluída demais para o alvo e quando o volume a pipetar fica abaixo de 5 µL, e indica
+qual campo está fora do esperado.
 
-**Autora · Author:** Thaís Dolzany de Oliveira, PhD
+Os números podem ser digitados como `5000`, `0,32`, `0.1` ou `1e6`. Valores com ponto de
+milhar, como `100.000`, são recusados de propósito, porque podem ser lidos como cem mil ou
+como cem. As fórmulas estão na tabela acima.
+
+As áreas e os volumes variam entre fabricantes. Os valores pré-carregados são referências
+comuns (Corning e Thermo): confira o catálogo da sua placa e o seu protocolo.
+
+## License · Licença
+
+MIT. Thaís Dolzany de Oliveira, PhD.

@@ -29,6 +29,8 @@
     padding:9px 12px; font-size:16px; color:var(--slate900); font-variant-numeric:tabular-nums;
   }
   input:focus,select:focus{outline:none; border-color:var(--teal500); box-shadow:0 0 0 2px var(--teal200);}
+  input[aria-invalid="true"]{border-color:#b45309; box-shadow:0 0 0 2px var(--amber100);}
+  .toggle button:focus-visible{outline:2px solid var(--teal500); outline-offset:1px;}
   .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
   .group{margin-top:16px;}
   .group:first-child{margin-top:0;}
@@ -96,15 +98,15 @@
     <div class="group">
       <span class="lbl">Definir o alvo por</span>
       <div class="toggle">
-        <button type="button" id="btnPerV" class="active">Células por poço</button>
-        <button type="button" id="btnDens">Densidade (cells/cm²)</button>
+        <button type="button" id="btnPerV" class="active" aria-pressed="true">Células por poço</button>
+        <button type="button" id="btnDens" aria-pressed="false">Densidade (cells/cm²)</button>
       </div>
     </div>
 
     <div class="group" id="grpPerV">
       <label for="cpv">Células por poço/garrafa</label>
       <input id="cpv" inputmode="decimal" value="5000" />
-      <p class="hint">Aceita notação científica, ex.: 5e3 = 5000.</p>
+      <p class="hint" id="cpvHint">Aceita notação científica, ex.: 5e3 = 5000.</p>
     </div>
 
     <div class="group" id="grpDens" style="display:none;">
@@ -122,7 +124,7 @@
 
   <section class="result">
     <h2>Prepare a suspensão de plaqueamento</h2>
-    <div id="out"></div>
+    <div id="out" aria-live="polite"></div>
   </section>
 
   <p class="foot">Conferência rápida de bancada. Valide com seu protocolo e a contagem real.</p>
@@ -179,7 +181,42 @@ function vol(mL){
   return mL.toFixed(2).replace(".",",") + " mL";
 }
 
-function num(s){ var v = parseFloat(String(s).replace(",",".")); return isFinite(v) ? v : NaN; }
+// <calc> pure functions, also loaded by tests/calc.test.mjs
+// Parses a number typed in pt-BR or en style. Returns NaN for anything that is not a
+// plain number, and for thousand-grouped input such as "100.000" or "1.000.000",
+// which is ambiguous (100 or 100000?) and is safer to reject than to guess.
+function num(s){
+  var t = String(s).trim().replace(/\s+/g, "");
+  if(t === "") return NaN;
+  if(/^\d{1,3}([.,]\d{3}){2,}$/.test(t) || /^\d{1,3}\.\d{3}$/.test(t)) return NaN;
+  if(!/^\+?(\d+([.,]\d*)?|[.,]\d+)([eE][+-]?\d+)?$/.test(t)) return NaN;
+  var v = Number(t.replace(",", "."));
+  return isFinite(v) ? v : NaN;
+}
+
+// Checks the inputs and computes the master-mix recipe. Volumes in mL.
+// Returns {error: "<field>"} when an input is out of range, or {error: "too_dilute"}.
+function compute(A, W, N, ov, S, perV){
+  if(!(A > 0)) return {error: "area"};
+  if(!(W > 0)) return {error: "wv"};
+  if(!(N >= 1) || Math.floor(N) !== N) return {error: "n"};
+  if(!(ov >= 0 && ov <= 100)) return {error: "ov"};
+  if(!(perV > 0)) return {error: "target"};
+  if(!(S > 0)) return {error: "stock"};
+  var effN = N * (1 + ov / 100);
+  var r = {
+    totalWork: W * effN,
+    totalCells: perV * effN,
+    seedConc: perV / W,
+    finalDensity: perV / A
+  };
+  r.volStock = r.totalCells / S;
+  r.volMedium = r.totalWork - r.volStock;
+  r.dilution = S / r.seedConc;
+  if(r.volStock > r.totalWork) return {error: "too_dilute"};
+  return r;
+}
+// </calc>
 
 var mode = "perVessel";
 
@@ -198,6 +235,15 @@ sel.value = "p96";
 
 function $(id){ return document.getElementById(id); }
 
+var MESSAGES = {
+  area: "Informe a \u00E1rea do po\u00E7o em cm\u00B2 (n\u00FAmero maior que zero).",
+  wv: "Informe o volume por po\u00E7o em mL (n\u00FAmero maior que zero).",
+  n: "Informe quantos po\u00E7os ou garrafas, como n\u00FAmero inteiro.",
+  ov: "A sobra de seguran\u00E7a deve estar entre 0 e 100%.",
+  target: "Informe o alvo de c\u00E9lulas (n\u00FAmero maior que zero). Para milhares, use 5000 ou 5e3, sem ponto.",
+  stock: "Informe a concentra\u00E7\u00E3o contada (ex.: 1e6 ou 1000000). N\u00E3o use ponto como separador de milhar."
+};
+
 function drow(k,v){ return '<div class="drow"><dt>'+k+'</dt><dd>'+v+'</dd></div>'; }
 
 function recalc(){
@@ -206,29 +252,26 @@ function recalc(){
   var perV = (mode==="density") ? num($("dens").value)*A : num($("cpv").value);
 
   $("stockHint").textContent = (isFinite(S)&&S>0) ? ("= " + sci(S) + " c\u00E9lulas/mL") : "Ex.: 1e6 = 1 milh\u00E3o/mL";
+  var cpvV = num($("cpv").value);
+  $("cpvHint").textContent = (isFinite(cpvV)&&cpvV>0) ? ("= " + sci(cpvV) + " c\u00E9lulas por po\u00E7o") : "Aceita nota\u00E7\u00E3o cient\u00EDfica, ex.: 5e3 = 5000.";
   $("densHint").textContent = (mode==="density" && isFinite(perV)&&perV>0) ? ("Equivale a " + sci(perV) + " c\u00E9lulas por po\u00E7o.") : "";
 
   var out = $("out");
-  var valid = [A,W,N,S,perV].every(function(x){ return isFinite(x)&&x>0; }) && isFinite(ov);
-  if(!valid){
-    out.innerHTML = '<p class="empty">Preencha os campos acima para ver a receita.</p>';
-    return;
-  }
-
-  var effN = N*(1+ov/100);
-  var totalWork = W*effN;
-  var totalCells = perV*effN;
-  var seedConc = perV/W;
-  var volStock = totalCells/S;
-  var volMedium = totalWork - volStock;
-  var dilution = S/seedConc;
-  var finalDensity = perV/A;
-
-  if(volStock > totalWork){
+  var r = compute(A, W, N, ov, S, perV);
+  ["area","wv","n","ov","cpv","dens","stock"].forEach(function(id){ $(id).removeAttribute("aria-invalid"); });
+  if(r.error === "too_dilute"){
     out.innerHTML = '<p class="warn">A suspens\u00E3o contada est\u00E1 dilu\u00EDda demais para esse alvo. '
       + 'Centrifugue e ressuspenda num volume menor, ou reduza as c\u00E9lulas por po\u00E7o.</p>';
     return;
   }
+  if(r.error){
+    var field = r.error === "target" ? (mode === "density" ? "dens" : "cpv") : r.error;
+    $(field).setAttribute("aria-invalid", "true");
+    out.innerHTML = '<p class="empty">' + MESSAGES[r.error] + '</p>';
+    return;
+  }
+  var volStock = r.volStock, volMedium = r.volMedium, totalWork = r.totalWork, totalCells = r.totalCells,
+      dilution = r.dilution, finalDensity = r.finalDensity;
 
   var tiny = volStock < 0.005
     ? '<p class="warn">O volume de suspens\u00E3o a pipetar \u00E9 muito pequeno. '
@@ -256,19 +299,23 @@ sel.addEventListener("change", function(){
   if(p){ $("area").value = p.area; $("wv").value = p.vol; $("n").value = p.wells; }
   recalc();
 });
-$("area").addEventListener("input", function(){ sel.value = "custom"; recalc(); });
-["wv","n","ov","cpv","dens","stock"].forEach(function(id){
+["area","wv"].forEach(function(id){
+  $(id).addEventListener("input", function(){ sel.value = "custom"; recalc(); });
+});
+["n","ov","cpv","dens","stock"].forEach(function(id){
   $(id).addEventListener("input", recalc);
 });
 $("btnPerV").addEventListener("click", function(){
   mode = "perVessel";
   $("btnPerV").classList.add("active"); $("btnDens").classList.remove("active");
+  $("btnPerV").setAttribute("aria-pressed","true"); $("btnDens").setAttribute("aria-pressed","false");
   $("grpPerV").style.display = ""; $("grpDens").style.display = "none";
   recalc();
 });
 $("btnDens").addEventListener("click", function(){
   mode = "density";
   $("btnDens").classList.add("active"); $("btnPerV").classList.remove("active");
+  $("btnDens").setAttribute("aria-pressed","true"); $("btnPerV").setAttribute("aria-pressed","false");
   $("grpDens").style.display = ""; $("grpPerV").style.display = "none";
   recalc();
 });
